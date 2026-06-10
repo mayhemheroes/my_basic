@@ -1,0 +1,14 @@
+project: my-basic
+target: my-basic
+
+# File-input (CLI) target: feed the fuzz bytes as a MY-BASIC source file to the interpreter.
+# my_basic's shell driver (shell/main.c) loads the file (mb_load_file) and runs it (mb_run),
+# exercising the whole language pipeline — lexer, parser, runtime — in core/my_basic.c. Not
+# libFuzzer: the interpreter binary IS the natural fuzz surface, so the file-input target both
+# fuzzes and serves as its own single-input reproducer. @@ is the input-file placeholder.
+#
+# Ported from the old mayhemheroes integration's single file-input target (old Mayhemfile ran
+# `/my_basic @@`, the binary the old Dockerfile.mayhem built via `make`). Same shape, now
+# pointed at the base-image build output under /mayhem.
+cmds:
+  - cmd: /mayhem/my_basic @@
