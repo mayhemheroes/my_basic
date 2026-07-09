@@ -1,0 +1,32 @@
+project: my-basic
+target: my-basic
+
+# File-input (CLI) target: feed the fuzz bytes as a MY-BASIC source file to the interpreter.
+# my_basic's shell driver (shell/main.c) loads the file (mb_load_file) and runs it (mb_run),
+# exercising the whole language pipeline — lexer, parser, runtime — in core/my_basic.c. Not
+# libFuzzer: the interpreter binary IS the natural fuzz surface, so the file-input target both
+# fuzzes and serves as its own single-input reproducer. @@ is the input-file placeholder.
+#
+# Ported from the old mayhemheroes integration's single file-input target (old Mayhemfile ran
+# `/my_basic @@`, the binary the old Dockerfile.mayhem built via `make`). Same shape, now
+# pointed at the base-image build output under /mayhem.
+# Canonical two-entry seed directive (docs/seed-corpus.md): the server-accumulated corpus tar
+# plus the local starter seeds at the per-target path (relative to the package root).
+# The project segment is spelled out ("mayhemheroes/my-basic"): $MAYHEM_PROJECT interpolates to
+# the GitHub repo name (mayhemheroes/my_basic, underscore), which is NOT this Mayhemfile's
+# project (my-basic) — the $-form points at a foreign project and aborts run-creation.
+testsuite:
+  - https://$MAYHEM_DOMAIN/mayhemheroes/my-basic/$MAYHEM_TARGET/testsuite.tar
+  - file://mayhem/my-basic/testsuite
+cmds:
+    # afl: the binary carries AFL compile-time instrumentation (afl-clang-fast in mayhem/build.sh),
+    # so Mayhem uses instrumented edge coverage. Without it this black-box CLI target fuzzes but the
+    # binary-only tracer records 0 edges on the completed run (SPEC.md gate 11).
+  - cmd: /mayhem/my_basic @@
+    afl: true
+    env:
+      # Mayhem's default executor cannot run this ASan binary (run event: "Error running your
+      # target ... try setting or increasing MFUZZ_COMPAT_LEVEL"); its coverage tracer records
+      # 0 modules / 0 bbs on the smoketest, which is what finalized every run at 0 edges.
+      # Level 2 selects the most compatible executor mode.
+      MFUZZ_COMPAT_LEVEL: "2"
